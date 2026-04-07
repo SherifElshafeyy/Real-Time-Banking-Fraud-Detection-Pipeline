@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.8.3
+    container_name: kafka
+    ports:
+      - "9092:9092"   # host access
+    environment:
+      KAFKA_KRAFT_MODE: 'true'
+      CLUSTER_ID: '1L6g7nGhU-eAKfL--X25wo'
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+      # Two listeners: one for host, one for internal Docker network
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - fraud_net
+
+  spark:
+    container_name: spark
+    build:
+      context: ./spark
+      dockerfile: Dockerfile
+    image: spark_stream_processing:0.0.1
+    environment:
+      - SPARK_MODE=master
+    restart: on-failure
+    ports:
+      - "4040:4040"   # Spark UI
+    depends_on:
+      - kafka
+    networks:
+      - fraud_net
+    volumes:
+      - ./spark/jobs:/app/jobs  # mount your PySpark scripts here
+
+networks:
+  fraud_net:
+    driver: bridge
+
+volumes:
+  kafka_data:
