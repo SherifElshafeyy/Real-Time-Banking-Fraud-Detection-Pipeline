@@ -10,7 +10,7 @@ from datetime import datetime as dt
 
 
 
-users = [f"User_{i}" for i in range (1,1001)]
+users = [f"User_{i}" for i in range (1,5)]
 transaction_types = ["PAYMENT", "WITHDRAWAL", "TRANSFER", "DEPOSIT"]
 currency_map = {
     "EGY": "EGP",  
