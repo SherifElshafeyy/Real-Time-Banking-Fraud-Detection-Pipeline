@@ -3,40 +3,57 @@ import json
 import random
 import time
 import uuid
-from datetime import datetime as dt
+from datetime import datetime as dt ,timezone
 
 
 
 
 
 
-users = [f"User_{i}" for i in range (1,5)]
+users = [f"User_{i}" for i in range (1,100)]
 transaction_types = ["PAYMENT", "WITHDRAWAL", "TRANSFER", "DEPOSIT"]
 currency_map = {
     "EGY": "EGP",  
-    "DEU": "EUR",  # Germany
-    "FRA": "EUR",  # France
-    "GBR": "GBP",  # United Kingdom
-    "CHN": "CNY",  # China
-    "ARE": "AED",  # UAE
+    "DEU": "EUR",  
+    "FRA": "EUR",  
+    "GBR": "GBP",  
+    "CHN": "CNY",  
+    "ARE": "AED", 
     "JPN": "JPY",  
     "SAU": "SAR",  
     "QAT": "QAR", 
     'USA': 'USD'
 }
+#Assign a home country for every user
+user_profiles = {
+    user: {
+        "home_country": random.choice(list(currency_map.keys()))
+    }
+    for user in users
+}
+
+
 def generate_transaction():
     
+    user_id = random.choice(users)
+
     #Countrty Choice
-    country = random.choice(list(currency_map.keys()))
+
+    if random.random() < 0.9:
+        country = user_profiles[user_id]["home_country"] 
+    else:
+        country = random.choice(list(currency_map.keys())) 
 
     #Amount Choice
+
     if random.random() < 0.9:
-        amount=round(random.uniform(1, 5000), 2)   # normal transactions
+        amount=round(random.uniform(1, 5000), 2)   
                  
     else:
-        amount = round(random.uniform(5001, 200000), 2)  # rare large ones
+        amount = round(random.uniform(5001, 200000), 2)  
     
     #Transaction Type Cases
+    
     transaction_type = random.choice(transaction_types)
     if transaction_type =='PAYMENT':
         merchant = random.choice(["Amazon", "Netflix", "Uber", "Apple", "Walmart", "Spotify"])
@@ -45,15 +62,15 @@ def generate_transaction():
 
     return {
         "transaction_id" : str(uuid.uuid4()),
-        "user_id" : random.choice(users),
-        "timestamp" : dt.now().isoformat(),
+        "user_id" : user_id,
+        "timestamp" : dt.now(timezone.utc).isoformat(),
         "transaction_type" : transaction_type,
         "amount": amount,
         "country" : country,
         "currency" : currency_map[country],
         "merchant" : merchant,
         "ip_address": f"192.168.{random.randint(0,255)}.{random.randint(0,255)}",
-        "status" : "SUCCESS" if random.random() < 0.95 else "FAILED"
+        "status" : "SUCCESS" if random.random() < 0.9 else "FAILED"
 
     }
 
@@ -86,7 +103,7 @@ def transaction_producer():
             )
 
             producer.poll(0)
-            time.sleep(5)
+            time.sleep(2)
             
 
     except KeyboardInterrupt:
