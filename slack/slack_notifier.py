@@ -80,7 +80,7 @@ def send_slack_alert(alert, severity):
 
 
 def consume():
-    print("🚀 Slack consumer listening for fraud alerts...")
+    print(" Slack consumer listening for fraud alerts...")
 
     try:
         while True:
