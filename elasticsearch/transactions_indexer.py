@@ -41,7 +41,7 @@ def create_index():
 
 def consume():
     create_index()
-    print("🚀 Listening for raw transactions...")
+    print(" Listening for raw transactions...")
 
     try:
         while True:
@@ -58,7 +58,7 @@ def consume():
             es.index(index=INDEX, document=transaction)
 
             # ✅ correct fields from transaction
-            print(f"📥 Indexed: {transaction['transaction_id']} | {transaction['user_id']} | {transaction['amount']}")
+            print(f" Indexed: {transaction['transaction_id']} | {transaction['user_id']} | {transaction['amount']}")
 
     except KeyboardInterrupt:
         print("Stopping consumer...")
