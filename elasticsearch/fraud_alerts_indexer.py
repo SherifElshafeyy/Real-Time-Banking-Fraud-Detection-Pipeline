@@ -1,43 +1,38 @@
 from confluent_kafka import Consumer, KafkaException
 from elasticsearch import Elasticsearch
 import json
-from datetime import datetime,timezone
+from datetime import datetime, timezone
 
-# Elasticsearch connection 
 es = Elasticsearch("http://localhost:9200")
 
-#  Kafka Consumer 
-consumer_config={
+consumer = Consumer({
     "bootstrap.servers": "localhost:9092",
     "group.id": "fraud_alerts_consumer",
-    "auto.offset.reset": "latest",
+    "auto.offset.reset": "latest",       
     "enable.auto.commit": True
-}
-
-
-
-consumer = Consumer(consumer_config)
+})
 
 consumer.subscribe(["fraud_alerts"])
 
-# Index name 
 INDEX = "fraud_alerts"
 
 def create_index():
-    if not es.indices.exists(index=INDEX):
+    try:
+        es.indices.get(index=INDEX)
+        print(f"ℹ️ Index '{INDEX}' already exists")
+    except Exception:
         es.indices.create(index=INDEX, mappings={
             "properties": {
-                "user_id":       {"type": "keyword"},
-                "alert_value":   {"type": "double"},
-                "window_start":  {"type": "date"},
-                "window_end":    {"type": "date"},
-                "alert_type":    {"type": "keyword"},
-                "ingested_at":   {"type": "date"}
+                "user_id":      {"type": "keyword"},
+                "alert_value":  {"type": "double"},
+                "window_start": {"type": "date"},
+                "window_end":   {"type": "date"},
+                "alert_type":   {"type": "keyword"},
+                "ingested_at":  {"type": "date"}
             }
         })
         print(f"✅ Index '{INDEX}' created")
-    else:
-        print(f"ℹ️ Index '{INDEX}' already exists")
+
 
 def consume():
     create_index()
@@ -53,15 +48,17 @@ def consume():
                 raise KafkaException(msg.error())
 
             alert = json.loads(msg.value().decode("utf-8"))
-
-            # add ingestion timestamp
             alert["ingested_at"] = datetime.now(timezone.utc).isoformat()
 
+            #  composite key for deduplication
+            doc_id = f"{alert['user_id']}_{alert['window_start']}_{alert['alert_type']}"
 
-            # sink to Elasticsearch
-            es.index(index=INDEX, document=alert)
-
-            print(f"📥 Indexed alert: {alert['alert_type']} | {alert['user_id']} | {alert['alert_value']}")
+            try:
+                #  op_type=create rejects duplicates atomically
+                es.index(index=INDEX, id=doc_id, document=alert, op_type="create")
+                print(f"📥 Indexed: {alert['alert_type']} | {alert['user_id']} | {alert['alert_value']}")
+            except Exception:
+                print(f"⏭️ Duplicate skipped: {alert['alert_type']} | {alert['user_id']}")
 
     except KeyboardInterrupt:
         print("Stopping consumer...")
